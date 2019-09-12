@@ -1,33 +1,46 @@
+variable "profile" {
+  description = "Default Profile"
+  default = "dev-ongoing"
+}
 ### MANDATORY ###
 variable "es_cluster" {
-  description = "Name of the elasticsearch cluster, used in node discovery"
+  description = "poc-elk-logcenter"
+  default = "poc-elk-logcenter"
 }
 
 variable "aws_region" {
   type = "string"
+  default = "us-east-1"
 }
+
+variable "route_table_id" {
+  type = "string"
+  default = "rtb-8e674bf7"
+}
+
 
 variable "vpc_id" {
   description = "VPC ID to create the Elasticsearch cluster in"
   type = "string"
+  default = "vpc-e5313b83"
 }
 
 variable "clients_subnet_ids" {
   description = "Subnets to run client nodes and client ELB in. Only one subnet per availability zone allowed. Will detect a single subnet by default." 
   type = "list"
-  default = []
+  default = ["subnet-1e0bd556","subnet-b618f49a"]
 }
 
 variable "cluster_subnet_ids" {
   description = "Cluster nodes subnets. Defaults to all VPC subnets." 
   type = "list"
-  default = []
+  default = ["subnet-1e0bd556","subnet-b618f49a"]
 }
 
 variable "availability_zones" {
   type = "list"
   description = "AWS region to launch servers; if not set the available zones will be detected automatically"
-  default = []
+  default = ["us-east-1a","us-east-1d"]
 }
 
 variable "key_name" {
@@ -36,17 +49,17 @@ variable "key_name" {
 }
 
 variable "environment" {
-  default = "default"
+  default = "poc-elk"
 }
 
 variable "data_instance_type" {
   type = "string"
-  default = "c5.2xlarge"
+  default = "t2.large"
 }
 
 variable "master_instance_type" {
   type = "string"
-  default = "c5.large"
+  default = "t2.xlarge"
 }
 
 variable "elasticsearch_volume_size" {
@@ -69,12 +82,12 @@ variable "elasticsearch_logs_dir" {
 # default elasticsearch heap size
 variable "data_heap_size" {
   type = "string"
-  default = "8g"
+  default = "4g"
 }
 
 variable "master_heap_size" {
   type = "string"
-  default = "2g"
+  default = "4g"
 }
 
 variable "client_heap_size" {
@@ -83,15 +96,15 @@ variable "client_heap_size" {
 }
 
 variable "masters_count" {
-  default = "0"
+  default = "2"
 }
 
 variable "datas_count" {
-  default = "0"
+  default = "2"
 }
 
 variable "clients_count" {
-  default = "0"
+  default = "2"
 }
 
 variable "security_enabled" {
@@ -106,7 +119,7 @@ variable "monitoring_enabled" {
 
 # client nodes have nginx installed on them, these credentials are used for basic auth
 variable "client_user" {
-  default = "exampleuser"
+  default = "Overlord"
 }
 
 variable "public_facing" {
@@ -144,5 +157,5 @@ variable "xpack_monitoring_host" {
 
 variable "s3_backup_bucket" {
   description = "S3 bucket for backups"
-  default     = ""
+  default     = "poc-elk-bkp-bucket"
 }

@@ -177,6 +177,19 @@ else
         sudo service kibana restart
     fi
 
+    # Setup x-pack security also on Logstash configs where applicable
+
+if [ -f "/etc/logstash/logstash.yml" ]; then
+        echo "xpack.security.enabled: ${security_enabled}" | sudo tee -a /etc/logstash/logstash.yml
+        echo "xpack.monitoring.enabled: ${monitoring_enabled}" | sudo tee -a /etc/logstash/logstash.yml
+	echo "xpack.monitoring.elasticsearch.hosts: ["0.0.0.0:9200"]" | sudo tee -a /etc/logstash/logstash.yml
+
+        systemctl daemon-reload
+        systemctl enable logstash.service
+        sudo service logstash restart
+    fi
+ 
+
     if [ -f "/etc/nginx/nginx.conf" ]; then
         sudo rm /etc/grafana/grafana.ini
         cat <<'EOF' >>/etc/grafana/grafana.ini

@@ -1,5 +1,6 @@
 provider "aws" {
   region = "${var.aws_region}"
+  profile = "${var.profile}"
 }
 
 resource "random_string" "vm-login-password" {
@@ -35,14 +36,14 @@ resource "aws_security_group" "elasticsearch_security_group" {
   # inter-cluster communication over ports 9200-9400
   ingress {
     from_port         = 9200
-    to_port           = 9400
+    to_port           = 9600
     protocol          = "tcp"
     self              = true
   }
 
   # allow inter-cluster ping
   ingress {
-    from_port         = 8
+    from_port         = 0
     to_port           = 0
     protocol          = "icmp"
     self              = true
@@ -77,6 +78,20 @@ resource "aws_security_group" "elasticsearch_clients_security_group" {
   ingress {
     from_port         = 80
     to_port           = 80
+    protocol          = "tcp"
+    cidr_blocks       = ["0.0.0.0/0"]
+  }
+
+ingress {
+    from_port         = 5400
+    to_port           = 5400
+    protocol          = "tcp"
+    cidr_blocks       = ["0.0.0.0/0"]
+  }
+
+ingress {
+    from_port         = 9600
+    to_port           = 9600
     protocol          = "tcp"
     cidr_blocks       = ["0.0.0.0/0"]
   }
@@ -131,6 +146,21 @@ resource "aws_elb" "es_client_lb" {
     lb_port           = 9200
     lb_protocol       = "http"
   }
+
+  listener {
+    instance_port     = 5400
+    instance_protocol = "http"
+    lb_port           = 5400
+    lb_protocol       = "http"
+  }
+
+  listener {
+    instance_port     = 9600
+    instance_protocol = "http"
+    lb_port           = 9600
+    lb_protocol       = "http"
+  }
+
 
   health_check {
     healthy_threshold   = 2

@@ -28,12 +28,12 @@ resource "aws_launch_configuration" "data" {
   image_id = "${data.aws_ami.elasticsearch.id}"
   instance_type = "${var.data_instance_type}"
   security_groups = ["${concat(list(aws_security_group.elasticsearch_security_group.id), var.additional_security_groups)}"]
-  associate_public_ip_address = false
+  associate_public_ip_address = true
   iam_instance_profile = "${aws_iam_instance_profile.elasticsearch.id}"
   user_data = "${data.template_file.data_userdata_script.rendered}"
   key_name = "${var.key_name}"
 
-  ebs_optimized = "${var.ebs_optimized}"
+#  ebs_optimized = "${var.ebs_optimized}"
 
   lifecycle {
     create_before_destroy = true
@@ -42,7 +42,8 @@ resource "aws_launch_configuration" "data" {
   ebs_block_device {
     volume_type = "gp2"
     device_name = "/dev/xvdh"
-    volume_size = "${var.elasticsearch_volume_size}"
+    #volume_size = "${var.elasticsearch_volume_size}"
+    volume_size = "100" # GB
     encrypted = "${var.volume_encryption}"
   }
 }

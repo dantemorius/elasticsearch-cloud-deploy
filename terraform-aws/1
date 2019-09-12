@@ -1,0 +1,20 @@
+127.0.0.1	localhost
+127.0.1.1	quality-tnsilva nessus-beta.claro.com.br
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+172.16.95.11 sonar.claro-oracle.cloud
+#52.3.82.200 planos.claro.com.br
+#54.196.40.41 planos3.claro.com.br
+#192.229.153.4 assine3.net.com.br
+#192.229.153.4 assine3.clarotv.com.br
+#192.229.153.4 assine.net.com.br
+#192.229.153.4 assine.clarotv.com.br
+192.229.138.191	dynatrace.claro.com.br
+10.29.140.34 coinova.claro.com.br
+10.54.24.182 mail.claro.com.br
+

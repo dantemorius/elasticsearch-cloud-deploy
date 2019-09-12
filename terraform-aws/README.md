@@ -1,112 +1,102 @@
-# AWS deployment
+# Elasticsearch and Kibana machine images
 
-## Create the AMIs with Packer
+This Packer configuration will generate Ubuntu images with Elasticsearch, Kibana and other important tools for deploying and managing Elasticsearch clusters on the cloud.
 
-Go to the packer folder and see the README there. Once you have the AMI IDs, return here and continue with the next steps.
+The output of running Packer here would be two machine images, as below:
 
-## Create key-pair
+* elasticsearch node image, containing latest Elasticsearch installed (latest version 5.x) and configured with best-practices.
+* kibana node image, based on the elasticsearch node image, and with Kibana (5.x, latest), nginx with basic proxy and authentication setip, and Kopf.
 
-```bash
-aws ec2 create-key-pair --key-name elasticsearch --query 'KeyMaterial' --output text > elasticsearch.pem
-```
+## On Amazon Web Services (AWS)
 
-## VPC
+Using the AWS builder will create the two images and store them as AMIs.
 
-Create a VPC, or use existing. You will need the VPC ID we will use the available subnets within it. 
-
-## Configurations
-
-Edit `variables.tf` to specify the following:
-
-* `aws_region` - the region where to launch the cluster in.
-* `availability_zones` - at least 2 availability zones in that region.
-* `es_cluster` - the name of the Elasticsearch cluster to launch.
-* `key_name` - the name of the key to use - that key needs to be handy so you can access the machines if needed.
-* `vpc_id` - the ID of the VPC to launch the cluster in.
-
-The rest of the configurations are mostly around cluster topology and  machine types and sizes.
-
-### Cluster topology
-
-Two modes of deployment are supported:
-
-* A recommended configuration, with dedicated master-eligible nodes, data nodes, and client nodes. This is a production-ready and best-practice configuration. See more details in the [official documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html). 
-* Single node mode - mostly useful for experimentation
-
-At this point we consider the role `ingest` as unanimous with `data`, so all data nodes are also ingest nodes.
-
-The default mode is the single-node mode. To change it to the recommended configuration, edit `variables.tf` and set number of master nodes to 3, data nodes to at least 2, and client nodes to at least 1.
-
-All nodes with the `client` role will be attached to an ELB, so access to all client nodes can be done via the DNS it exposes.
-
-### Cluster bootstrap
-Deploying a cluster in non single-node mode requires [bootstrapping the cluster](https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-discovery-bootstrap-cluster.html).  
-We do this automatically, by spinning up a special bootstrap node, and terminating it once finished. This only happens once, first time you deploy the cluster. State information on whether cluster is bootstrapped or not is kept in a local file `cluster_bootstrap_state` which is used on later `terraform apply` runs.    
-After the bootstrap node has terminated, you can start using the cluster.
-
-### Security groups
-
-By default we create two security groups - one for the internal cluster nodes (data and master), and one for the client nodes. Your applications need to be in the latter only, and communicate with the cluster via the client nodes only.
-
-If you prefer using a security group of your own, you can add it to `additional_security_groups` in variables.tf.
-
-## Launch the cluster with Terraform
-
-On first usage, you will need to execute `terraform init` to initialize the terraform providers used.
-
-To deploy the cluster, or apply any changes to an existing cluster deployed using this project, run:
+As a convention the Packer builders will use a dedicated IAM roles, which you will need to have present.
 
 ```bash
-terraform plan
-terraform apply
+aws iam create-role --role-name packer --assume-role-policy-document '{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Effect": "Allow",
+    "Principal": {"Service": "ec2.amazonaws.com"},
+    "Action": "sts:AssumeRole",
+    "Sid": ""
+  }
+}'
 ```
 
-When terraform is done, you should see a lot of output ending with something like this:
+Response will look something like this:
 
+```json
+{
+    "Role": {
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": {
+                "Action": "sts:AssumeRole",
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                }
+            }
+        },
+        "RoleId": "AROAJ7Q2L7NZJHZBB6JKY",
+        "CreateDate": "2016-12-16T13:22:47.254Z",
+        "RoleName": "packer",
+        "Path": "/",
+        "Arn": "arn:aws:iam::611111111117:role/packer"
+    }
+}
 ```
-Apply complete! Resources: 14 added, 0 changed, 0 destroyed.
 
-The state of your infrastructure has been saved to the path
-below. This state is required to modify and destroy your
-infrastructure, so keep it safe. To inspect the complete state
-use the `terraform show` command.
-
-State path: terraform.tfstate
-
-Outputs:
-
-clients_dns = internal-es-test-client-lb-963348710.eu-central-1.elb.amazonaws.com
-```
-
-Note `clients_dns` - that's your entry point to the cluster.
-
-### Look around
-
-The client nodes are the ones exposed to external networks. They provide Kibana, Kopf and direct Elasticsearch access. Client nodes are accessible via their public IPs (depending on your security group / VPC settings) and the DNS of the ELB they are attached to (see above).
-
-Client nodes listen on port 8080 and are password protected. Access is managed by nginx which is expecting a username and password pair. Default ones are exampleuser/changeme. You can change those defaults by editing [this file](https://github.com/synhershko/elasticsearch-cloud-deploy/blob/master/packer/install-nginx.sh) and running Packer again.
-
-On client nodes you will find:
-
-* Kibana access is direct on port 8080 (http://host:8080)
-* [Cerebro](https://github.com/lmenezes/cerebro) (a cluster management UI) is available on http://host:8080/cerebro/
-* For direct Elasticsearch access, go to host:8080/es/
-
-You can pull the list of instances by their state and role using aws-cli:
+Follow up by execting the following
 
 ```bash
-aws ec2 describe-instances --filters Name=instance-state-name,Values=running
-aws ec2 describe-instances --filters Name=instance-state-name,Values=running,Name=tag:Role,Values=client
+aws iam create-instance-profile --instance-profile-name packer
+aws iam add-role-to-instance-profile  --instance-profile-name packer --role-name packer
+
 ```
 
-To login to one of the instances:
+## On Microsoft Azure
+
+Before running Packer for the first time you will need to do a one-time initial setup.
+
+Use PowerShell, and login to AzureRm. See here for more details: https://docs.microsoft.com/en-us/powershell/azure/authenticate-azureps. Once logged in, take note of the subscription and tenant IDs which will be printed out. Alternatively, you can retrieve them by running `Get-AzureRmSubscription` once logged-in.
+
+```Powershell
+$rgName = "packer-elasticsearch-images"
+$location = "East US"
+New-AzureRmResourceGroup -Name $rgName -Location $location
+$Password = ([char[]]([char]33..[char]95) + ([char[]]([char]97..[char]126)) + 0..9 | sort {Get-Random})[0..8] -join ''
+"Password: " + $Password
+$sp = New-AzureRmADServicePrincipal -DisplayName "Azure Packer IKF" -Password $Password
+New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $sp.ApplicationId
+$sp.ApplicationId
+```
+
+Note the resource group name, location, password, sp.ApplicationId as used in the script and emitted as output and update `variables.json`.
+
+To learn more about using Packer on Azure see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/build-image-with-packer
+
+Similarly, using the Azure CLI is going to look something like below:
 
 ```bash
-ssh -i elasticsearch.pem ubuntu@{public IP / DNS of the instance}
+export rgName=packer-elasticsearch-images
+az group create -n ${rgName} -l eastus
+
+az ad sp create-for-rbac --query "{ client_id: appId, client_secret: password, tenant_id: tenant }"
+# outputs client_id, client_secret and tenant_id
+az account show --query "{ subscription_id: id }"
+# outputs subscription_id
 ```
 
-### Changing cluster size after deployment
+## Building
 
-Terraform is smart enough to make the least amount of changes possible and resize resources when possible instead of destroying them.
- 
-When you want to change the cluster configuration (e.g. add more client nodes, data nodes, resize disk or instances, etc) just edit variables.tf and run `terraform plan` followed by `terraform apply`.
+Building the AMIs is done using the following commands:
+
+```bash
+packer build -only=amazon-ebs -var-file=variables.json elasticsearch7-node.packer.json
+packer build -only=amazon-ebs -var-file=variables.json kibana7-node.packer.json
+```
+
+Replace the `-only` parameter to `azure-arm` to build images for Azure instead of AWS.

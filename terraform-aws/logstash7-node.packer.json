@@ -1,9 +1,9 @@
 {
-  "description": "Elasticsarch Image",
+  "description": "Logstash Image",
   "builders": [
     {
       "type": "amazon-ebs",
-      "ami_name": "elasticsearch7-{{isotime | clean_ami_name}}",
+      "ami_name": "logstash7-{{isotime | clean_ami_name}}",
       "availability_zone": "{{user `aws_az`}}",
       "iam_instance_profile": "packer",
       "instance_type": "t2.medium",
@@ -23,29 +23,10 @@
       "ssh_timeout": "10m",
       "ssh_username": "ubuntu",
       "tags": {
-        "ImageType": "elasticsearch7-packer-image"
+        "ImageType": "logstash7-packer-image"
       },
       "spot_price_auto_product": "Linux/UNIX (Amazon VPC)",
       "spot_price": "auto"
-    },
-    {
-      "type": "azure-arm",
-
-      "client_id": "{{user `azure_client_id`}}",
-      "client_secret": "{{user `azure_client_secret`}}",
-      "tenant_id": "{{user `azure_tenant_id`}}",
-      "subscription_id": "{{user `azure_subscription_id`}}",
-
-      "managed_image_resource_group_name": "{{user `azure_resource_group_name`}}",
-      "managed_image_name": "elasticsearch7-{{isotime \"2006-01-02T030405\"}}",
-
-      "os_type": "Linux",
-      "image_publisher": "Canonical",
-      "image_offer": "UbuntuServer",
-      "image_sku": "16.04-LTS",
-
-      "location": "{{user `azure_location`}}",
-      "vm_size": "Standard_DS2_v2"
     },
     {
       "type": "googlecompute",
@@ -67,9 +48,20 @@
     },
     {
       "type": "file",
-      "source": "../templates/elasticsearch.yml",
-      "destination": "elasticsearch.yml"
+      "source": "../templates/logstash.yml",
+      "destination": "logstash.yml"
     },
+    {
+      "type": "file",
+      "source": "../templates/02-apache-input.conf",
+      "destination": "02-apache-input.conf"
+    },
+    {
+      "type": "file",
+      "source": "../templates/pipelines.yml",
+      "destination": "pipelines.yml"
+    },
+
     {
       "type": "shell",
       "script": "install-openjdk11.sh",
@@ -77,19 +69,9 @@
     },
     {
       "type": "shell",
-      "script": "install-elasticsearch7.sh",
-      "environment_vars": [ "ES_VERSION={{user `elasticsearch_version`}}" ],
-      "execute_command": "echo '' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'"
-    },
-{
-      "type": "shell",
       "script": "install-logstash7.sh",
       "environment_vars": [ "ES_VERSION={{user `elasticsearch_version`}}" ],
       "execute_command": "echo '' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'"
-    },
-    {
-      "type": "shell",
-      "script": "install-cloud-plugin.sh"
     },
     {
       "type": "shell",
@@ -106,3 +88,4 @@
     }
   ]
 }
+
